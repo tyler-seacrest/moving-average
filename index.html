@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Bitcoin and the Moving Average Strategy</title>
+
+
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+	
+	input[type="range"] {
+	width: 250px;
+	margin: 0;
+	}
+	
+  </style>
+</head>
+<body>
+ 
+
+
+<h2>Bitcoin and the Moving Average Srategy</h2>
+
+
+<input type="radio" name="dataYear" value="2015" onClick="updateYear()">2015
+<input type="radio" name="dataYear" value="2016" onClick="updateYear()">2016
+<input type="radio" name="dataYear" value="2017" onClick="updateYear()">2017
+<input type="radio" name="dataYear" value="2018" onClick="updateYear()">2018
+<input type="radio" name="dataYear" value="2019" onClick="updateYear()">2019
+<input type="radio" name="dataYear" value="2020" onClick="updateYear()">2020
+<input type="radio" name="dataYear" value="2021" onClick="updateYear()">2021
+<input type="radio" name="dataYear" value="2022" onClick="updateYear()" checked>2022
+
+
+<div id="tester" style="width:600px;height:250px;"></div>
+
+
+<button onClick="randomStrat()">Random Strategy</button>
+
+<!--<button onClick="test()">Test</button>-->
+
+<button onClick="holdStrat()">Buy and hold Strategy</button>
+
+
+<button onClick="moveAveStrat()">Moving Average Strategy</button>
+
+<br><br>
+
+Shorterm Average:  
+<input type="radio" name="shortTA" value="5" onClick="update()">5 
+<input type="radio" name="shortTA" value="10" checked onClick="update()">10
+<input type="radio" name="shortTA" value="20" onClick="update()">20
+
+<br>
+Longterm Average:  
+<input type="radio" name="longTA" value="50" checked onClick="update()">50
+<input type="radio" name="longTA" value="100" onClick="update()">100
+<input type="radio" name="longTA" value="200" onClick="update()">200
+
+
+<br><br>
+<textarea id="outputArea" cols="80" rows="30" readonly>
+</textarea>
+
+
+
+
+
+	<script src="plotly-latest.min.js"></script>
+	<script src="math.min.js"></script>
+	<script src="csv-parse.js"></script>
+	<script src="jquery.min.js"></script>
+  
+  
+  <script>
+  
+ const arrayColumn = (arr, n) => arr.map(x => x[n]);
+
+
+var data;  //This will hold the data in a double array like data[row][column]
+var Dates;
+var Open;
+var OpenAveShort;
+var OpenAveLong;
+var Money = 1000;
+var Shares = 0;
+var timeFrame = 100;
+var shorttermAve = 10;
+var longtermAve = 50;
+var timeToSell = false;
+var message = "";
+var TESTER;
+var trial = 1;
+var textarea = document.getElementById('outputArea');
+createPlot();
+
+var xhr = new XMLHttpRequest;
+loadData(2022);
+
+function loadData(year) {
+xhr.open('GET', 'https://tyler-seacrest.github.io/moving-average/data' + year + '.csv', true);
+xhr.onload = function (){
+    data = CSVToArray(xhr.responseText);
+	$("#hello").html("CSV loaded");
+	Dates = arrayColumn(data,0);
+	Open = arrayColumn(data,1);
+	Dates.shift();
+	Open.shift();
+	Open = Open.map(Parse);
+	Dates.reverse();
+	Open.reverse();
+	Dates.shift();
+	Open.shift();
+	timeFrame = Open.length-1;
+	OpenAveShort = averageArr(Open,shorttermAve);
+	OpenAveLong = averageArr(Open,longtermAve);
+	updatePlot();
+};
+xhr.send(null);
+}
+
+
+function test() {
+	
+	averageArr(Open , 40)
+	console.log(Open);
+
+}
+
+function Parse(ele)  {
+if(typeof ele != 'undefined')
+	return parseInt(ele.replace(",", ""));
+else	
+	return null;
+}
+
+
+function randomStrat() {
+	timeToSell=false;
+	Money = 1000;
+	Shares = 0;
+	print("Trial " + trial + " (random) \n")
+	trial += 1;
+	outputStatus(0);
+
+	for(i = 1; i < timeFrame; i++) {
+
+		if(Math.random() < 0.05)  {
+			BuyOrSell(i)
+			}
+	}
+	
+	outputStatus(timeFrame);
+	print("Ending value (money and shares): $" + roundIT((Money + Shares*Open[timeFrame]), 2));
+	print("\n\n");
+}
+
+function holdStrat() {
+	Money = 1000;
+	Shares = 0;
+	print("Trial " + trial + " (buy and hold)\n")
+	trial += 1;
+	outputStatus(0);
+	Buy(0);
+	
+	
+	outputStatus(timeFrame);
+	print("Ending value (money and shares): $" + roundIT((Money + Shares*Open[timeFrame]), 2));
+	print("\n\n");
+}
+
+function moveAveStrat()  {
+	var lookingToSell = false;
+	Money = 1000;
+	Shares = 0;
+	print("Trial " + trial + " (moving average " + shorttermAve + "/" + longtermAve + ")\n")
+	trial += 1;
+	outputStatus(0);
+
+	for(i = 61; i < timeFrame; i++) {
+
+		if(OpenAveShort[i] > OpenAveLong[i] && !lookingToSell)  {
+			Buy(i)
+			lookingToSell = true;
+			}
+		if(OpenAveLong[i] > OpenAveShort[i] && lookingToSell) {
+			Sell(i)
+			lookingToSell = false;
+			}
+		}
+	
+	outputStatus(timeFrame);
+	print("Ending value (money and shares): $" + roundIT((Money + Shares*Open[timeFrame]), 2));
+	print("\n\n");
+	
+}
+
+
+function BuyOrSell(i) {
+	if(timeToSell)
+		{
+		Sell(i);
+		timeToSell=false;
+		}
+	else	
+		{
+		Buy(i);
+		timeToSell=true;
+		}
+
+	}
+
+function Buy(i) {
+	if(Open[i]!=0)
+		{
+		Shares = Money/Open[i];
+		Money = 0;
+		}
+	outputStatus(i);
+
+}
+
+
+function Sell(i) {
+	if(Open[i]!=0){
+		Money = Shares*Open[i];
+		Shares = 0;
+		}
+	outputStatus(i);
+
+}
+
+function outputStatus(i) {
+
+var k = 8-(roundIT(Money, 2) + "").length;
+print(Dates[i] + ",  Money: $" + roundIT(Money, 2) + "," + " ".repeat(k) + " Shares: " + roundIT(Shares, 3) + "\n");
+
+}
+
+String.prototype.repeat = function(length) {
+ return Array(length + 1).join(this);
+};
+
+
+
+function print(mes) {
+
+message += mes;
+$("#outputArea").html(message);
+textarea.scrollTop = textarea.scrollHeight;
+
+}
+
+function roundIT(x, dig) {
+return Math.round(x*Math.pow(10, dig))/Math.pow(10,dig);
+}
+
+
+function averageArr(arr, n) {
+
+(newArr = []).length = arr.length; newArr.fill(0);
+
+for(i = n; i < arr.length; i++)	{
+	newArr[i]=sumArr(arr,i-n,i)/n;
+
+
+	}
+return newArr;
+}
+
+function sumArr(arr, a, b){
+
+partialSum = 0;
+
+for(i = a; i < b; i++) {
+	partialSum += arr[i];
+	}
+	
+return partialSum;
+}
+
+
+function createPlot() {
+
+TESTER = document.getElementById('tester');
+	Plotly.newPlot( TESTER, [
+	{x: Dates, y: Open, name: "Bitcoin Price" },
+	{x: Dates, y:OpenAveShort, name: "Shorterm Average"},
+	{x: Dates,y:OpenAveLong, name: "Longterm Average"}], 
+	{margin: { t: 0 } } );
+
+
+}
+
+function updatePlot()  {
+	Plotly.react( TESTER, [
+	{x: Dates, y: Open, name: "Bitcoin Price" },
+	{x: Dates, y:OpenAveShort, name: "Shorterm Average"},
+	{x: Dates,y:OpenAveLong, name: "Longterm Average"}], 
+	{margin: { t: 0 } } );
+
+}
+
+function update() {
+
+shorttermAve = $('input[name="shortTA"]:checked').val();
+longtermAve = $('input[name="longTA"]:checked').val();
+
+OpenAveShort = averageArr(Open,shorttermAve);
+OpenAveLong = averageArr(Open,longtermAve);
+
+updatePlot();
+}
+
+function updateYear() {
+var year = $('input[name="dataYear"]:checked').val();
+loadData(year);
+}
+
+
+
+ </script>
+</body>
+</html>

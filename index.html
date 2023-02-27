@@ -3,6 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
   <title>Bitcoin and the Moving Average Strategy</title>
 
 
@@ -35,7 +36,7 @@
 <input type="radio" name="dataYear" value="2022" onClick="updateYear()" checked>2022
 
 
-<div id="tester" style="width:600px;height:250px;"></div>
+<div id="tester" style="width:550px;height:250px;"></div>
 
 
 <button onClick="randomStrat()">Random Strategy</button>
@@ -62,7 +63,7 @@ Longterm Average:
 
 
 <br><br>
-<textarea id="outputArea" cols="80" rows="30" readonly>
+<textarea id="outputArea" cols="70" rows="25" readonly>
 </textarea>
 
 
@@ -70,7 +71,6 @@ Longterm Average:
 
 
 	<script src="plotly-latest.min.js"></script>
-	<script src="math.min.js"></script>
 	<script src="csv-parse.js"></script>
 	<script src="jquery.min.js"></script>
   
@@ -290,7 +290,7 @@ TESTER = document.getElementById('tester');
 	{x: Dates, y: Open, name: "Bitcoin Price" },
 	{x: Dates, y:OpenAveShort, name: "Shorterm Average"},
 	{x: Dates,y:OpenAveLong, name: "Longterm Average"}], 
-	{margin: { t: 0 } } );
+	{margin: { t: 15 } } );
 
 
 }
@@ -300,7 +300,7 @@ function updatePlot()  {
 	{x: Dates, y: Open, name: "Bitcoin Price" },
 	{x: Dates, y:OpenAveShort, name: "Shorterm Average"},
 	{x: Dates,y:OpenAveLong, name: "Longterm Average"}], 
-	{margin: { t: 0 } } );
+	{margin: { t: 15, l: 25 } } );
 
 }
 

@@ -77,19 +77,24 @@ Longterm Average:
   
   <script>
   
- const arrayColumn = (arr, n) => arr.map(x => x[n]);
+const arrayColumn = (arr, n) => arr.map(x => x[n]);
 
 
 var data;  //This will hold the data in a double array like data[row][column]
+var dataOld;
+var OpenLong;
 var Dates;
 var Open;
+var OpenOld;
 var OpenAveShort;
 var OpenAveLong;
 var Money = 1000;
 var Shares = 0;
-var timeFrame = 100;
+var timeFrame;
+var timeFrameOld;
 var shorttermAve = 10;
 var longtermAve = 50;
+var year = 2022;
 var timeToSell = false;
 var message = "";
 var TESTER;
@@ -98,13 +103,16 @@ var textarea = document.getElementById('outputArea');
 createPlot();
 
 var xhr = new XMLHttpRequest;
+
 loadData(2022);
 
 function loadData(year) {
+
+
+
 xhr.open('GET', 'https://tyler-seacrest.github.io/moving-average/data' + year + '.csv', true);
 xhr.onload = function (){
     data = CSVToArray(xhr.responseText);
-	$("#hello").html("CSV loaded");
 	Dates = arrayColumn(data,0);
 	Open = arrayColumn(data,1);
 	Dates.shift();
@@ -115,11 +123,34 @@ xhr.onload = function (){
 	Dates.shift();
 	Open.shift();
 	timeFrame = Open.length-1;
-	OpenAveShort = averageArr(Open,shorttermAve);
-	OpenAveLong = averageArr(Open,longtermAve);
-	updatePlot();
-};
+	loadOldData(year);
+	};
+	
 xhr.send(null);
+
+
+
+}
+
+function loadOldData(year) {
+
+xhr.open('GET', 'https://tyler-seacrest.github.io/moving-average/data' + (year-1) + '.csv', true);
+xhr.onload = function (){
+    dataOld = CSVToArray(xhr.responseText);
+	OpenOld = arrayColumn(dataOld,1);
+	OpenOld.shift();
+	OpenOld = OpenOld.map(Parse);
+	OpenOld.reverse();
+	OpenOld.shift();
+	timeFrameOld = OpenOld.length-1;
+	
+	OpenAveShort = averageArr(Open,OpenOld,shorttermAve);
+	OpenAveLong = averageArr(Open,OpenOld,longtermAve);
+	updatePlot();
+	};
+	
+xhr.send(null);
+
 }
 
 
@@ -142,7 +173,7 @@ function randomStrat() {
 	timeToSell=false;
 	Money = 1000;
 	Shares = 0;
-	print("Trial " + trial + " (random) \n")
+	print("Trial " + trial + " (random, " + year + ") \n")
 	trial += 1;
 	outputStatus(0);
 
@@ -161,7 +192,7 @@ function randomStrat() {
 function holdStrat() {
 	Money = 1000;
 	Shares = 0;
-	print("Trial " + trial + " (buy and hold)\n")
+	print("Trial " + trial + " (buy and hold, " + year + ")\n")
 	trial += 1;
 	outputStatus(0);
 	Buy(0);
@@ -176,11 +207,11 @@ function moveAveStrat()  {
 	var lookingToSell = false;
 	Money = 1000;
 	Shares = 0;
-	print("Trial " + trial + " (moving average " + shorttermAve + "/" + longtermAve + ")\n")
+	print("Trial " + trial + " (moving average " + shorttermAve + "/" + longtermAve + ", " + year + ")\n")
 	trial += 1;
 	outputStatus(0);
 
-	for(i = 61; i < timeFrame; i++) {
+	for(i = 0; i < timeFrame; i++) {
 
 		if(OpenAveShort[i] > OpenAveLong[i] && !lookingToSell)  {
 			Buy(i)
@@ -259,14 +290,16 @@ return Math.round(x*Math.pow(10, dig))/Math.pow(10,dig);
 }
 
 
-function averageArr(arr, n) {
+function averageArr(arr, arrOld, n) {
+
+const offset = arrOld.length;
+const combinedArr = arrOld.concat(arr);
 
 (newArr = []).length = arr.length; newArr.fill(0);
+;
 
-for(i = n; i < arr.length; i++)	{
-	newArr[i]=sumArr(arr,i-n,i)/n;
-
-
+for(let i = 0; i < arr.length; i++)	{
+	newArr[i]=sumArr(combinedArr,offset-n+i,offset+i)/n;
 	}
 return newArr;
 }
@@ -309,14 +342,14 @@ function update() {
 shorttermAve = $('input[name="shortTA"]:checked').val();
 longtermAve = $('input[name="longTA"]:checked').val();
 
-OpenAveShort = averageArr(Open,shorttermAve);
-OpenAveLong = averageArr(Open,longtermAve);
+OpenAveShort = averageArr(Open,OpenOld,shorttermAve);
+OpenAveLong = averageArr(Open,OpenOld,longtermAve);
 
 updatePlot();
 }
 
 function updateYear() {
-var year = $('input[name="dataYear"]:checked').val();
+year = $('input[name="dataYear"]:checked').val();
 loadData(year);
 }
 
